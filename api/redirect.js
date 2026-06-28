@@ -1,44 +1,60 @@
-import { kv } from '@vercel/kv';
+import { createClient } from '@supabase/supabase-js';
 
-// KISALTTIĞIN LİNKLERİ BURAYA EKLE:
-// "kod": "gideceği_gerçek_link"
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
 const LINK_MAP = {
-    "code1": "https://google.com",
-    "datadev": "https://datadev.site",
-    "hediye": "https://github.com"
+    "test": "https://google.com",
+    "github": "https://github.com",
+    "datadev": "https://datadev.site"
 };
 
 export default async function handler(req, res) {
     const { code } = req.query;
     const targetUrl = LINK_MAP[code];
 
-    // Eğer kod havuzda yoksa hata ver
-    if (!targetUrl) {
-        return res.status(404).send('CashLink: Girdiğiniz kod sistemde bulunamadı.');
+    if (!targetUrl) return res.status(404).send('Hata: Geçersiz CashLink kodu.');
+
+    // Cookie'den giriş yapmış kullanıcının ID'sini oku
+    const cookies = req.headers.cookie || '';
+    const userIdCookie = cookies.split('; ').find(row => row.startsWith('sb_user_id='));
+    
+    if (!userIdCookie) {
+        // Giriş yapmamışsa login sayfasına postala
+        return res.redirect('/login');
     }
+    
+    const userId = userIdCookie.split('=')[1];
 
-    // Kullanıcının gerçek IP adresini Vercel üzerinden güvenli alıyoruz
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const cleanIp = ip.split(',')[0].trim();
+    // Profil bilgilerini veritabanından çek
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    // Veritabanı anahtarları
-    const cooldownKey = `cooldown:${cleanIp}`;
-    const balanceKey = `balance:${cleanIp}`;
+    if (error || !profile) return res.status(404).send('Kullanıcı profili bulunamadı.');
 
-    // 1. Güvenlik Kontrolü: Bu IP son 30 dakikada girdi mi?
-    const isLocked = await kv.get(cooldownKey);
+    const now = new Date();
     let earnStatus = 'cooldown';
+    let updatedBalance = profile.balance;
 
-    if (!isLocked) {
-        // Eğer 30 dakika içinde girmediyse: 100 TL ekle
-        const currentBalance = await kv.get(balanceKey) || 0;
-        await kv.set(balanceKey, Number(currentBalance) + 100);
+    // 30 dakika (1800000 milisaniye) kontrolü
+    const lastClick = profile.last_click_at ? new Date(profile.last_click_at) : null;
+    
+    if (!lastClick || (now - lastClick >= 1800000)) {
+        // 30 dakika geçmiş veya ilk defa tıklıyor: 100 TL ekle ve süreyi güncelle
+        updatedBalance = Number(profile.balance) + 100;
         
-        // Bu IP'yi 30 dakika (1800 saniye) boyunca kilitle
-        await kv.set(cooldownKey, 'locked', { ex: 1800 });
+        await supabase
+            .from('profiles')
+            .update({ 
+                balance: updatedBalance, 
+                last_click_at: now.toISOString() 
+            })
+            .eq('id', userId);
+
         earnStatus = 'success';
     }
 
-    // Bilgileri arayüze (index.html'e) gönder ve sayfayı aç
-    return res.redirect(`/index.html?target=${encodeURIComponent(targetUrl)}&earn=${earnStatus}`);
+    return res.redirect(`/index.html?target=${encodeURIComponent(targetUrl)}&earn=${earnStatus}&balance=${updatedBalance}`);
 }
