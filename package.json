@@ -1,7 +1,7 @@
 {
-  "name": "cashlink",
+  "name": "cashlink-supabase",
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@supabase/supabase-js": "^2.39.8"
   }
 }
