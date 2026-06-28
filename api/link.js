@@ -1,6 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+// Koda gömdüğün Supabase bilgilerini buraya yazmayı unutma:
+const SUPABASE_URL = "BURAYA_SUPABASE_URL_YAZ";
+const SUPABASE_ANON_KEY = "BURAYA_SUPABASE_ANON_KEY_YAZ";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 6 Haneli Rastgele Kod Üretme Fonksiyonu
+function generateRandomCode() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
 
 export default async function handler(req, res) {
     const cookies = req.headers.cookie || '';
@@ -10,24 +24,43 @@ export default async function handler(req, res) {
 
     const { action } = req.query;
 
-    // 1. Panel Verilerini Getir (Bakiye ve Link Listesi)
     if (action === 'get_data') {
         const { data: profile } = await supabase.from('profiles').select('balance').eq('id', userId).single();
         const { data: links } = await supabase.from('links').select('*').eq('user_id', userId);
         return res.status(200).json({ balance: profile?.balance || 0, links: links || [] });
     }
 
-    // 2. Yeni Link Oluştur / Kısalt
     if (action === 'create' && req.method === 'POST') {
-        const { target_url, code } = req.body;
+        const { target_url } = req.body;
         
-        // Kod benzersiz mi kontrol et
-        const { data: existing } = await supabase.from('links').select('code').eq('code', code).substring();
-        if (existing && existing.length > 0) return res.status(400).send('Bu özel kod zaten kullanımda.');
+        let uniqueCode = '';
+        let isUnique = false;
+        let attempts = 0;
+
+        // Üretilen kodun veritabanında çakışmaması için döngüyle kontrol ediyoruz
+        while (!isUnique && attempts < 10) {
+            attempts++;
+            const testCode = generateRandomCode();
+            
+            const { data: existing } = await supabase
+                .from('links')
+                .select('code')
+                .eq('code', testCode)
+                .maybeSingle();
+
+            if (!existing) {
+                uniqueCode = testCode;
+                isUnique = true;
+            }
+        }
+
+        if (!uniqueCode) {
+            return res.status(500).send('Benzersiz kod üretilemedi, lütfen tekrar deneyin.');
+        }
 
         const { error } = await supabase.from('links').insert({
             user_id: userId,
-            code: code.trim().toLowerCase(),
+            code: uniqueCode,
             target_url: target_url.trim()
         });
 
