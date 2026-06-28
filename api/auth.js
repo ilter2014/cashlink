@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+// Supabase bilgilerini doğrudan buraya yazıyorsun:
+const SUPABASE_URL = "BURAYA_SUPABASE_URL_YAZ";
+const SUPABASE_ANON_KEY = "BURAYA_SUPABASE_ANON_KEY_YAZ";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default async function handler(req, res) {
     const { action } = req.query;
@@ -17,7 +21,6 @@ export default async function handler(req, res) {
         if (error) return res.status(400).send(`Hata: ${error.message}`);
         
         res.setHeader('Set-Cookie', `sb_user_id=${data.user.id}; Path=/; HttpOnly; Max-Age=2592000`);
-        // Giriş yapınca direkt panele yolla
         return res.redirect('/dashboard');
     }
 }
