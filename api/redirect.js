@@ -1,11 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+// Supabase bilgilerini doğrudan buraya yazıyorsun:
+const SUPABASE_URL = "BURAYA_SUPABASE_URL_YAZ";
+const SUPABASE_ANON_KEY = "BURAYA_SUPABASE_ANON_KEY_YAZ";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default async function handler(req, res) {
     const { code } = req.query;
 
-    // Veritabanından linki ve link sahibini bul
     const { data: linkData, error: linkError } = await supabase
         .from('links')
         .select('*, user_id ( id, balance )')
@@ -14,14 +17,12 @@ export default async function handler(req, res) {
 
     if (linkError || !linkData) return res.status(404).send('Hata: Link bulunamadı veya kaldırılmış.');
 
-    const linkOwnerId = linkData.user_id.id; // Linki oluşturan ağanın ID'si
+    const linkOwnerId = linkData.user_id.id;
     const currentOwnerBalance = linkData.user_id.balance;
 
-    // Tıklayan kişinin IP adresini çek
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const cleanIp = ip.split(',')[0].trim();
 
-    // Bu IP adresi, bu link sahibinin linklerine en son ne zaman tıklamış kontrol et (30 Dakika Sınırı)
     const { data: lastClick } = await supabase
         .from('clicks')
         .select('created_at')
@@ -35,13 +36,11 @@ export default async function handler(req, res) {
     let earnStatus = 'cooldown';
 
     if (!lastClick || (now - new Date(lastClick.created_at) >= 1800000)) {
-        // Son 30 dakikada tıklama yok: Link sahibine 100 TL ekle!
         await supabase
             .from('profiles')
             .update({ balance: Number(currentOwnerBalance) + 100 })
             .eq('id', linkOwnerId);
 
-        // Yeni tıklama logunu IP ile kaydet
         await supabase
             .from('clicks')
             .insert({ user_id: linkOwnerId, ip_address: cleanIp });
@@ -49,6 +48,5 @@ export default async function handler(req, res) {
         earnStatus = 'success';
     }
 
-    // Sayaç sayfasına yönlendir
     return res.redirect(`/index.html?target=${encodeURIComponent(linkData.target_url)}&earn=${earnStatus}`);
 }
