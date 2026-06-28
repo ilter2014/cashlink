@@ -8,16 +8,16 @@ export default async function handler(req, res) {
 
     if (action === 'register') {
         const { error } = await supabase.auth.signUp({ email, password });
-        if (error) return res.status(400).send(`Kayıt Hatası: ${error.message}`);
-        return res.send('Kayıt başarılı! E-posta adresinize gelen onay linkine tıkladıktan sonra giriş yapabilirsiniz. (Supabase ayarlarından e-posta onayını kapatabilirsiniz)');
+        if (error) return res.status(400).send(`Hata: ${error.message}`);
+        return res.send('Kayıt başarılı! Giriş sayfasına dönebilirsiniz.');
     }
 
     if (action === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return res.status(400).send(`Giriş Hatası: ${error.message}`);
+        if (error) return res.status(400).send(`Hata: ${error.message}`);
         
-        // Kullanıcı ID'sini cookie içine kaydediyoruz (Güvenlik için basit sürüm)
         res.setHeader('Set-Cookie', `sb_user_id=${data.user.id}; Path=/; HttpOnly; Max-Age=2592000`);
-        return res.send('Giriş başarılı! Artık cashlink kodlarını kullanabilirsiniz. Örn: siteadi.com/test');
+        // Giriş yapınca direkt panele yolla
+        return res.redirect('/dashboard');
     }
 }
