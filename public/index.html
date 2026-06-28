@@ -2,80 +2,35 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CashLink | Güvenli Yönlendirme</title>
+    <title>CashLink | Güvenli Bağlantı</title>
     <style>
-        body {
-            background-color: #0b0f19;
-            color: #f1f5f9;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .header-banner {
-            background-color: #1e293b;
-            border: 2px solid #22c55e;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-weight: bold;
-            margin-bottom: 40px;
-            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
-            text-align: center;
-        }
-        .counter-box {
-            font-size: 22px;
-            text-align: center;
-            background: #111827;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid #1f2937;
-        }
-        #countdown {
-            font-size: 64px;
-            color: #22c55e;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        .status {
-            margin-top: 25px;
-            color: #94a3b8;
-            font-size: 15px;
-            font-weight: 500;
-        }
+        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .header-banner { background-color: #1e293b; border: 1px solid #38bdf8; padding: 15px 30px; border-radius: 8px; font-weight: bold; margin-bottom: 40px; }
+        .counter-box { font-size: 24px; text-align: center; }
+        #countdown { font-size: 48px; color: #38bdf8; font-weight: bold; margin-top: 10px; }
+        .status { margin-top: 20px; font-size: 16px; font-weight: 500; }
     </style>
 </head>
 <body>
-
-    <div class="header-banner">
-        🛡️ Bu site DataDev tarafından korunmakta ve desteklenmektedir.
-    </div>
-
-    <div class="counter-box">
-        Güvenli bağlantı kuruluyor, lütfen bekleyin...
-        <div id="countdown">5</div>
-    </div>
-
-    <div class="status" id="status-text">IP ve Cihaz doğrulaması yapılıyor...</div>
+    <div class="header-banner">⚠️ Bu site DataDev tarafından korunmakta ve desteklenmektedir.</div>
+    <div class="counter-box">Güvenli bağlantı kuruluyor, lütfen bekleyin...<div id="countdown">5</div></div>
+    <div class="status" id="status-text">Kullanıcı doğrulaması yapılıyor...</div>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const targetUrl = urlParams.get('target');
         const earnStatus = urlParams.get('earn');
+        const balance = urlParams.get('balance');
         let timeLeft = 5;
         
         const countdownElement = document.getElementById('countdown');
         const statusElement = document.getElementById('status-text');
 
-        // Backend'den gelen cevaba göre kullanıcıya bilgi veriyoruz
         if(earnStatus === 'success') {
-            statusElement.innerText = "Tebrikler! Hesabınıza 100 TL eklendi. Yönlendiriliyorsunuz...";
+            statusElement.innerText = `💰 Hesabınıza 100 TL eklendi! Güncel Bakiye: ${balance} TL. Yönlendiriliyorsunuz...`;
             statusElement.style.color = "#4ade80";
         } else if(earnStatus === 'cooldown') {
-            statusElement.innerText = "Bu IP ile son 30 dakika içinde giriş yapılmış. Sistem koruması aktif, ödül eklenmedi.";
+            statusElement.innerText = `❌ Son 30 dakika içinde zaten ödül aldınız! Güncel Bakiye: ${balance} TL. Ödül alınamadı.`;
             statusElement.style.color = "#f87171";
         }
 
@@ -87,8 +42,7 @@
                 if (targetUrl) {
                     window.location.href = decodeURIComponent(targetUrl);
                 } else {
-                    statusElement.innerText = "Hata: Geçersiz veya süresi dolmuş link.";
-                    statusElement.style.color = "#f87171";
+                    statusElement.innerText = "Hata: Geçersiz yönlendirme kodu.";
                 }
             }
         }, 1000);
